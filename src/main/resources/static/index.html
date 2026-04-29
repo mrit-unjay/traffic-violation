@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Traffic Dashboard</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body { margin:0; font-family: Arial; background:#f4f6f9; }
+
+        .sidebar {
+            width:220px;
+            height:100vh;
+            position:fixed;
+            background:#0b1a2f;
+            color:white;
+            padding:20px;
+        }
+
+        .sidebar a {
+            display:block;
+            color:white;
+            text-decoration:none;
+            margin:15px 0;
+        }
+
+        .main {
+            margin-left:240px;
+            padding:20px;
+        }
+
+        .cards {
+            display:flex;
+            gap:20px;
+        }
+
+        .card {
+            flex:1;
+            padding:20px;
+            border-radius:12px;
+            color:white;
+            font-size:20px;
+        }
+
+        .blue { background:#3b82f6; }
+        .red { background:#ef4444; }
+        .green { background:#10b981; }
+
+        .form, .tableBox {
+            margin-top:20px;
+            background:white;
+            padding:20px;
+            border-radius:10px;
+        }
+
+        input {
+            padding:10px;
+            margin-right:10px;
+        }
+
+        button {
+            padding:10px 20px;
+            background:#2563eb;
+            color:white;
+            border:none;
+            border-radius:5px;
+        }
+
+        table {
+            width:100%;
+            border-collapse:collapse;
+        }
+
+        th {
+            background:#111827;
+            color:white;
+        }
+
+        td, th {
+            padding:10px;
+            text-align:center;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="sidebar">
+    <h2>🚦 Traffic</h2>
+    <a href="#">Dashboard</a>
+</div>
+
+<div class="main">
+
+    <h1>Dashboard</h1>
+
+    <div class="cards">
+        <div class="card blue">Total: <span id="vehicleCount">0</span></div>
+        <div class="card red">Violations: <span id="violations">0</span></div>
+        <div class="card green">Fine: ₹<span id="totalFine">0</span></div>
+    </div>
+
+    <div class="form">
+        <h3>Add Vehicle</h3>
+        <input id="vid" placeholder="Vehicle ID">
+        <input id="speed" placeholder="Speed">
+        <input id="zone" placeholder="Zone">
+        <label><input type="checkbox" id="emergency"> Emergency</label>
+        <button onclick="addVehicle()">Submit</button>
+    </div>
+
+    <div class="tableBox">
+        <h3>Records</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Vehicle</th>
+                    <th>Speed</th>
+                    <th>Zone</th>
+                    <th>Type</th>
+                    <th>Fine</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="table"></tbody>
+        </table>
+    </div>
+
+    <div class="form">
+        <h3>Analytics</h3>
+        <canvas id="chart" style="max-width:400px;"></canvas>
+    </div>
+
+</div>
+
+<script>
+
+async function loadDashboard(){
+    try{
+        const res = await fetch("http://localhost:8081/all");
+        const data = await res.json();
+
+        document.getElementById("vehicleCount").innerText = data.length;
+
+        let fine=0, violations=0;
+
+        data.forEach(v=>{
+            fine += v.fine || 0;
+            if((v.fine || 0)>0) violations++;
+        });
+
+        document.getElementById("totalFine").innerText = fine;
+        document.getElementById("violations").innerText = violations;
+
+        loadTable(data);
+        loadChart(data);
+
+    }catch(e){
+        console.error(e);
+    }
+}
+
+function loadTable(data){
+    let html="";
+    data.forEach(v=>{
+        html += `
+        <tr>
+            <td>${v.id}</td>
+            <td>${v.vehicleId}</td>
+            <td>${v.speed}</td>
+            <td>${v.zone}</td>
+            <td>${v.violationType}</td>
+            <td>₹${v.fine}</td>
+            <td><button onclick="deleteVehicle(${v.id})">Delete</button></td>
+        </tr>`;
+    });
+    document.getElementById("table").innerHTML = html;
+}
+
+function loadChart(data){
+    let normal=0, over=0;
+
+    data.forEach(v=>{
+        if(v.fine>0) over++;
+        else normal++;
+    });
+
+    new Chart(document.getElementById("chart"),{
+        type:'doughnut',
+        data:{
+            labels:["Normal","Overspeed"],
+            datasets:[{
+                data:[normal,over],
+                backgroundColor:["green","red"]
+            }]
+        },
+        options:{
+            responsive:false
+        }
+    });
+}
+
+async function addVehicle(){
+    const v = {
+        vehicleId: document.getElementById("vid").value,
+        speed: parseFloat(document.getElementById("speed").value),
+        zone: document.getElementById("zone").value,
+        emergency: document.getElementById("emergency").checked
+    };
+
+    await fetch("http://localhost:8081/add",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify(v)
+    });
+
+    loadDashboard();
+}
+
+async function deleteVehicle(id){
+
+    let pass = prompt("Enter Admin Password:");
+
+    if(pass !== "admin123"){
+        alert("Wrong Password");
+        return;
+    }
+
+    try {
+        const res = await fetch(`http://localhost:8081/delete/${id}`, {
+            method: "DELETE"
+        });
+
+        const msg = await res.text();
+
+        if(res.ok){
+            alert("Deleted Successfully");
+            loadDashboard();
+        } else {
+            alert("Delete failed: " + msg);
+        }
+
+    } catch (err) {
+        console.error(err);
+        alert("Server error");
+    }
+}
+
+
+loadDashboard();
+
+</script>
+
+</body>
+</html>
