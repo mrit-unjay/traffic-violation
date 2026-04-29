@@ -4,6 +4,10 @@ A full-stack web application to monitor vehicle speed, detect traffic violations
 
 ---
 
+🌐 Live Demo
+
+🔗 https://traffic-violation-5b3k.onrender.com
+
 ## 📌 Features
 
 * ➕ Add vehicle details (ID, Speed, Zone, Emergency)
@@ -38,7 +42,9 @@ A full-stack web application to monitor vehicle speed, detect traffic violations
 
 * HTML, CSS, JavaScript
 * Chart.js (for analytics)
-
+### Deployment
+* Docker
+* Render (Backend Hosting)
 ---
 
 ## ⚙️ How It Works
